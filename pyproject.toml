@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mindlite"
+version = "1.0.0"
+description = "A minimal, fast CLI for managing ideas, todos, and issues using only Python's standard library"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+maintainers = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["cli", "todo", "task", "management", "productivity"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/yourusername/mindlite"
+Repository = "https://github.com/yourusername/mindlite"
+Documentation = "https://github.com/yourusername/mindlite#readme"
+"Bug Tracker" = "https://github.com/yourusername/mindlite/issues"
+
+[project.scripts]
+mindlite = "mindlite.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mindlite*"]
+
+[tool.setuptools.package-data]
+mindlite = ["*.md", "*.txt"]
