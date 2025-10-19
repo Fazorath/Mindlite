@@ -12,6 +12,18 @@ class Column(Vertical):
     def compose(self):
         yield Static(f"[bold]{self.title}")
 
+    def _clear_column_safe(self) -> None:
+        """Clear column content safely across Textual versions."""
+        try:
+            # Remove all children except the title
+            children_to_remove = [child for child in self.children if child != self.query_one(Static)]
+            for child in children_to_remove:
+                child.remove()
+        except Exception:
+            # Fallback: rebuild the column
+            self.remove_children()
+            self.mount(Static(f"[bold]{self.title}"))
+
 
 class BoardViewWidget(Horizontal):
     def compose(self):
@@ -25,12 +37,16 @@ class BoardViewWidget(Horizontal):
         yield self.done
 
     def set_rows(self, rows) -> None:
-        # Clear columns
+        # Clear columns safely
         for col in [self.todo, self.doing, self.blocked, self.done]:
-            col.remove_children()
+            col._clear_column_safe()
+        
+        # Group by status
         by_status = {"todo": [], "doing": [], "blocked": [], "done": []}
         for r in rows:
             by_status[r["status"]].append(r)
+        
+        # Populate columns
         for status, col in [
             ("todo", self.todo),
             ("doing", self.doing),

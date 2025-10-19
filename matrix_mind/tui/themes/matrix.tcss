@@ -1,14 +1,11 @@
 /* Matrix theme */
-:root {
-  --bg: #000000;
-  --green: #00E676;
-  --green-dim: #00BFA5;
-  --gray: #1B1B1B;
+Screen {
+  background: #000000;
 }
 
 * {
-  background: var(--bg);
-  color: var(--green-dim);
+  background: #000000;
+  color: #00BFA5;
 }
 
 #rain {
@@ -17,20 +14,20 @@
 
 #content, #sidebar, #detail, #main-list {
   background: #000000dd;
-  border: solid var(--green-dim);
+  border: solid #00BFA5;
 }
 
 Header, Footer {
   background: #000000f5;
-  color: var(--green);
+  color: #00E676;
 }
 
 Static {
-  color: var(--green-dim);
+  color: #00BFA5;
 }
 
 .accent {
-  color: var(--green);
+  color: #00E676;
 }
 
 

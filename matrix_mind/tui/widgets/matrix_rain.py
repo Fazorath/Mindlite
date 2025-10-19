@@ -12,10 +12,6 @@ class MatrixRain(Widget):
 
     frame = reactive(0)
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.opacity = 0.15
-
     def on_mount(self) -> None:
         self.set_interval(0.12, self.tick)
 
