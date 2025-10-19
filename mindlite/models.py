@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
 
 # Type aliases
@@ -20,13 +20,20 @@ def now_iso() -> str:
 
 def parse_date(s: Optional[str]) -> Optional[str]:
     """
-    Parse date string in YYYY-MM-DD format.
+    Parse date string in multiple formats.
+    
+    Supported formats:
+    - YYYY-MM-DD (ISO format)
+    - MM/DD/YY or MM/DD/YYYY
+    - DD/MM/YY or DD/MM/YYYY
+    - +N (N days from today)
+    - tomorrow, today, yesterday
     
     Args:
         s: Date string or None
         
     Returns:
-        Validated date string or None
+        Validated date string in YYYY-MM-DD format or None
         
     Raises:
         ValueError: If date format is invalid
@@ -34,16 +41,57 @@ def parse_date(s: Optional[str]) -> Optional[str]:
     if not s:
         return None
     
-    # Basic format validation
-    if not re.match(r"^\d{4}-\d{2}-\d{2}$", s):
-        raise ValueError(f"Invalid date format: {s}. Use YYYY-MM-DD")
+    s = s.strip().lower()
     
-    # Try to parse to validate it's a real date
-    try:
-        datetime.strptime(s, "%Y-%m-%d")
-        return s
-    except ValueError as e:
-        raise ValueError(f"Invalid date: {s}. {e}")
+    # Handle relative dates
+    if s == 'today':
+        return datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    elif s == 'tomorrow':
+        from datetime import timedelta
+        return (datetime.now(timezone.utc) + timedelta(days=1)).strftime('%Y-%m-%d')
+    elif s == 'yesterday':
+        from datetime import timedelta
+        return (datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%d')
+    elif s.startswith('+'):
+        try:
+            days = int(s[1:])
+            from datetime import timedelta
+            return (datetime.now(timezone.utc) + timedelta(days=days)).strftime('%Y-%m-%d')
+        except ValueError:
+            raise ValueError(f"Invalid relative date: {s}. Use +N for N days from today")
+    
+    # Handle MM/DD/YY or MM/DD/YYYY
+    if re.match(r'^\d{1,2}/\d{1,2}/\d{2,4}$', s):
+        try:
+            if len(s.split('/')[-1]) == 2:  # YY format
+                parsed = datetime.strptime(s, '%m/%d/%y')
+            else:  # YYYY format
+                parsed = datetime.strptime(s, '%m/%d/%Y')
+            return parsed.strftime('%Y-%m-%d')
+        except ValueError:
+            pass
+    
+    # Handle DD/MM/YY or DD/MM/YYYY (try this if MM/DD fails)
+    if re.match(r'^\d{1,2}/\d{1,2}/\d{2,4}$', s):
+        try:
+            if len(s.split('/')[-1]) == 2:  # YY format
+                parsed = datetime.strptime(s, '%d/%m/%y')
+            else:  # YYYY format
+                parsed = datetime.strptime(s, '%d/%m/%Y')
+            return parsed.strftime('%Y-%m-%d')
+        except ValueError:
+            pass
+    
+    # Handle YYYY-MM-DD (original format)
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', s):
+        try:
+            datetime.strptime(s, '%Y-%m-%d')
+            return s
+        except ValueError as e:
+            raise ValueError(f"Invalid date: {s}. {e}")
+    
+    # If none of the formats work
+    raise ValueError(f"Invalid date format: {s}. Supported: YYYY-MM-DD, MM/DD/YY, DD/MM/YY, +N, tomorrow, today, yesterday")
 
 
 def validate_type(item_type: str) -> ItemType:
