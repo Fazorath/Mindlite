@@ -54,17 +54,31 @@ def cmd_list(args: argparse.Namespace) -> None:
     filters: Dict[str, Any] = {}
     
     if args.type:
-        filters["type"] = args.type
+        filters["type"] = comma_split(args.type) if "," in args.type else [args.type]
     if args.status:
-        filters["status"] = args.status
+        filters["status"] = comma_split(args.status) if "," in args.status else [args.status]
+    if args.priority:
+        filters["priority"] = comma_split(args.priority) if "," in args.priority else [args.priority]
     if args.open:
         filters["open_only"] = True
+    if args.overdue:
+        filters["overdue"] = True
+    if args.due_today:
+        filters["due_today"] = True
+    if args.due_this_week:
+        filters["due_this_week"] = True
     if args.tag:
         filters["tag"] = args.tag
+    if args.tags:
+        filters["tag"] = comma_split(args.tags)
     if args.search:
         filters["search"] = args.search
     if args.due_in:
         filters["due_within_days"] = args.due_in
+    if args.created_since:
+        filters["created_since"] = args.created_since
+    if args.updated_since:
+        filters["updated_since"] = args.updated_since
     
     with get_conn() as conn:
         items = list_items(conn, filters)
@@ -223,6 +237,68 @@ def cmd_agenda(args: argparse.Namespace) -> None:
     print_table(display_items, columns)
 
 
+def cmd_bulk(args: argparse.Namespace) -> None:
+    """Handle bulk operations."""
+    if not args.action:
+        error_exit("Bulk action required: done, delete, tag, or start")
+    
+    # Parse comma-separated IDs
+    try:
+        ids = [int(id_str.strip()) for id_str in args.ids.split(',')]
+    except ValueError:
+        error_exit("Invalid IDs. Use comma-separated numbers like: 1,2,3")
+    
+    with get_conn() as conn:
+        # Verify all items exist
+        for item_id in ids:
+            item = get_item(conn, item_id)
+            if not item:
+                error_exit(f"Item #{item_id} not found")
+        
+        # Perform bulk action
+        if args.action == 'done':
+            for item_id in ids:
+                update_item(conn, item_id, status='done')
+            print(f"Marked {len(ids)} items as done")
+        
+        elif args.action == 'delete':
+            if not args.yes:
+                item_titles = []
+                for item_id in ids:
+                    item = get_item(conn, item_id)
+                    item_titles.append(f"#{item_id} {item['title']}")
+                
+                prompt = "Delete " + str(len(ids)) + " items?\n" + "\n".join(item_titles)
+                if not confirm(prompt):
+                    print("Cancelled.")
+                    return
+            
+            for item_id in ids:
+                delete_item(conn, item_id)
+            print(f"Deleted {len(ids)} items")
+        
+        elif args.action == 'tag':
+            if not args.tags:
+                error_exit("Tags required for bulk tag operation")
+            
+            tags = comma_split(args.tags)
+            for item_id in ids:
+                item = get_item(conn, item_id)
+                existing_tags = item['tags']
+                # Merge tags (avoid duplicates)
+                all_tags = list(set(existing_tags + tags))
+                update_item(conn, item_id, tags=all_tags)
+            print(f"Added tags to {len(ids)} items: {', '.join(tags)}")
+        
+        elif args.action == 'start':
+            for item_id in ids:
+                update_item(conn, item_id, status='doing')
+            print(f"Started {len(ids)} items")
+        
+        else:
+            error_exit(f"Unknown bulk action: {args.action}")
+
+
 def cmd_export(args: argparse.Namespace) -> None:
     """Export items to file."""
     with get_conn() as conn:
@@ -243,7 +319,7 @@ def create_parser() -> argparse.ArgumentParser:
         description="A minimal CLI for ideas, todos, and issues"
     )
     
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands (aliases: a=add, l=list, s=show, e=edit, st=start, b=block, del=delete, ag=agenda, exp=export, h=help)")
     
     # init command
     subparsers.add_parser("init", help="Initialize database")
@@ -259,12 +335,19 @@ def create_parser() -> argparse.ArgumentParser:
     
     # list command
     list_parser = subparsers.add_parser("list", help="List items")
-    list_parser.add_argument("--type", choices=["todo", "idea", "issue"], help="Filter by type")
-    list_parser.add_argument("--status", choices=["todo", "doing", "blocked", "done"], help="Filter by status")
+    list_parser.add_argument("--type", help="Filter by type (comma-separated: todo,idea,issue)")
+    list_parser.add_argument("--status", help="Filter by status (comma-separated: todo,doing,blocked,done)")
+    list_parser.add_argument("--priority", help="Filter by priority (comma-separated: low,med,high)")
     list_parser.add_argument("--open", action="store_true", help="Show only non-done items")
+    list_parser.add_argument("--overdue", action="store_true", help="Show overdue items")
+    list_parser.add_argument("--due-today", action="store_true", help="Show items due today")
+    list_parser.add_argument("--due-this-week", action="store_true", help="Show items due this week")
     list_parser.add_argument("--tag", help="Filter by tag")
+    list_parser.add_argument("--tags", help="Filter by multiple tags (comma-separated)")
     list_parser.add_argument("--search", help="Search in title and body")
     list_parser.add_argument("--due-in", type=int, help="Show items due within N days")
+    list_parser.add_argument("--created-since", help="Show items created since date (YYYY-MM-DD)")
+    list_parser.add_argument("--updated-since", help="Show items updated since date (YYYY-MM-DD)")
     
     # show command
     show_parser = subparsers.add_parser("show", help="Show item details")
@@ -305,13 +388,46 @@ def create_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("format", choices=["json", "md"], help="Export format")
     export_parser.add_argument("output", help="Output file path")
     
+    # bulk command
+    bulk_parser = subparsers.add_parser("bulk", help="Bulk operations on multiple items")
+    bulk_parser.add_argument("action", choices=["done", "delete", "tag", "start"], help="Bulk action")
+    bulk_parser.add_argument("ids", help="Comma-separated item IDs (e.g., 1,2,3)")
+    bulk_parser.add_argument("--tags", help="Tags for bulk tag operation")
+    bulk_parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation for delete")
+    
+    # help command
+    subparsers.add_parser("help", help="Show help")
+    
     return parser
 
 
 def main() -> None:
     """Main entry point."""
+    # Handle command aliases before parsing
+    command_aliases = {
+        'a': 'add',
+        'l': 'list', 
+        's': 'show',
+        'e': 'edit',
+        'st': 'start',
+        'b': 'block',
+        'done': 'done',
+        'del': 'delete',
+        'ag': 'agenda',
+        'exp': 'export',
+        'h': 'help'
+    }
+    
+    # Replace aliases in sys.argv before parsing
+    if len(sys.argv) > 1 and sys.argv[1] in command_aliases:
+        sys.argv[1] = command_aliases[sys.argv[1]]
+    
     parser = create_parser()
     args = parser.parse_args()
+    
+    if args.command == 'help':
+        parser.print_help()
+        sys.exit(0)
     
     if not args.command:
         parser.print_help()
@@ -330,6 +446,7 @@ def main() -> None:
         "delete": cmd_delete,
         "agenda": cmd_agenda,
         "export": cmd_export,
+        "bulk": cmd_bulk,
     }
     
     handler = command_handlers.get(args.command)

@@ -27,7 +27,7 @@ def confirm(prompt: str) -> bool:
 
 def print_table(rows: List[dict], columns: List[Tuple[str, str]]) -> None:
     """
-    Print a simple ASCII table.
+    Print a simple ASCII table with dynamic column widths.
     
     Args:
         rows: List of dictionaries representing table rows
@@ -37,18 +37,33 @@ def print_table(rows: List[dict], columns: List[Tuple[str, str]]) -> None:
         print("No items found.")
         return
     
-    # Calculate column widths
+    # Get terminal width for better column sizing
+    import shutil
+    terminal_width = shutil.get_terminal_size().columns
+    
+    # Calculate column widths more intelligently
     widths = {}
     for field_name, display_name in columns:
-        widths[field_name] = max(len(display_name), 8)  # Minimum width
+        # Start with header width
+        widths[field_name] = len(display_name)
     
+    # Calculate content widths
     for row in rows:
         for field_name, _ in columns:
             value = str(row.get(field_name, ""))
-            # Truncate long values
-            if len(value) > widths[field_name]:
-                value = value[:widths[field_name]-3] + "..."
+            # Don't truncate during width calculation
             widths[field_name] = max(widths[field_name], len(value))
+    
+    # Distribute available width proportionally
+    total_content_width = sum(widths.values())
+    available_width = terminal_width - (len(columns) - 1) * 3  # Account for separators
+    
+    if total_content_width > available_width:
+        # Scale down proportionally, but keep minimum widths
+        scale_factor = available_width / total_content_width
+        for field_name in widths:
+            new_width = max(8, int(widths[field_name] * scale_factor))
+            widths[field_name] = min(new_width, widths[field_name])  # Don't make wider than content
     
     # Print header
     header_parts = []
@@ -66,10 +81,11 @@ def print_table(rows: List[dict], columns: List[Tuple[str, str]]) -> None:
         row_parts = []
         for field_name, _ in columns:
             value = str(row.get(field_name, ""))
-            # Truncate long values
-            if len(value) > widths[field_name]:
-                value = value[:widths[field_name]-3] + "..."
-            row_parts.append(value.ljust(widths[field_name]))
+            width = widths[field_name]
+            # Truncate with ellipsis if needed
+            if len(value) > width:
+                value = value[:width-3] + "..."
+            row_parts.append(value.ljust(width))
         print(" | ".join(row_parts))
 
 

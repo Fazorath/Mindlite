@@ -15,7 +15,7 @@ Priority = Literal["low", "med", "high"]
 
 def now_iso() -> str:
     """Get current UTC timestamp as ISO string."""
-    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 
 
 def parse_date(s: Optional[str]) -> Optional[str]:

@@ -114,6 +114,10 @@ def get_item_tags(conn: sqlite3.Connection, item_id: int) -> List[str]:
 
 def insert_item(conn: sqlite3.Connection, item: Item) -> int:
     """Insert a new item and return its ID."""
+    # Check if this is the first item (database is empty)
+    cursor = conn.execute('SELECT COUNT(*) FROM items')
+    count = cursor.fetchone()[0]
+    
     data = item.to_dict()
     cursor = conn.execute(
         """INSERT INTO items (type, title, body, status, priority, due_date, created_at, updated_at)
@@ -124,6 +128,12 @@ def insert_item(conn: sqlite3.Connection, item: Item) -> int:
         )
     )
     item_id = cursor.lastrowid
+    
+    # If this was the first item, reset the autoincrement to start from 1
+    if count == 0:
+        conn.execute('DELETE FROM sqlite_sequence WHERE name="items"')
+        conn.execute('UPDATE items SET id = 1 WHERE id = ?', (item_id,))
+        item_id = 1
     
     if item.tags:
         set_item_tags(conn, item_id, item.tags)
@@ -184,35 +194,76 @@ def list_items(conn: sqlite3.Connection, filters: Optional[Dict[str, Any]] = Non
     where_parts = []
     params = []
     
-    if filters.get("type"):
-        where_parts.append("type = ?")
-        params.append(filters["type"])
+    if filters.get('type'):
+        types = filters['type'] if isinstance(filters['type'], list) else [filters['type']]
+        placeholders = ','.join(['?' for _ in types])
+        where_parts.append(f'type IN ({placeholders})')
+        params.extend(types)
     
-    if filters.get("status"):
-        where_parts.append("status = ?")
-        params.append(filters["status"])
+    if filters.get('status'):
+        statuses = filters['status'] if isinstance(filters['status'], list) else [filters['status']]
+        placeholders = ','.join(['?' for _ in statuses])
+        where_parts.append(f'status IN ({placeholders})')
+        params.extend(statuses)
     
-    if filters.get("open_only"):
+    if filters.get('priority'):
+        priorities = filters['priority'] if isinstance(filters['priority'], list) else [filters['priority']]
+        placeholders = ','.join(['?' for _ in priorities])
+        where_parts.append(f'priority IN ({placeholders})')
+        params.extend(priorities)
+    
+    if filters.get('open_only'):
         where_parts.append("status != 'done'")
     
-    if filters.get("tag"):
-        where_parts.append("id IN (SELECT item_id FROM item_tags WHERE tag_id IN (SELECT id FROM tags WHERE name = ?))")
-        params.append(filters["tag"])
+    if filters.get('overdue'):
+        from datetime import datetime, timezone
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        where_parts.append(f'due_date < ?')
+        params.append(today)
     
-    if filters.get("search"):
-        where_parts.append("(title LIKE ? OR body LIKE ?)")
-        search_term = f"%{filters['search']}%"
+    if filters.get('due_today'):
+        from datetime import datetime, timezone
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        where_parts.append(f'due_date = ?')
+        params.append(today)
+    
+    if filters.get('due_this_week'):
+        from datetime import datetime, timedelta, timezone
+        today = datetime.now(timezone.utc)
+        week_end = (today + timedelta(days=7)).strftime('%Y-%m-%d')
+        where_parts.append(f'due_date <= ? AND due_date >= ?')
+        params.extend([week_end, today.strftime('%Y-%m-%d')])
+    
+    if filters.get('tag'):
+        tags = filters['tag'] if isinstance(filters['tag'], list) else [filters['tag']]
+        tag_conditions = []
+        for tag in tags:
+            tag_conditions.append('id IN (SELECT item_id FROM item_tags WHERE tag_id IN (SELECT id FROM tags WHERE name = ?))')
+            params.append(tag)
+        where_parts.append(f'({" OR ".join(tag_conditions)})')
+    
+    if filters.get('search'):
+        where_parts.append('(title LIKE ? OR body LIKE ?)')
+        search_term = f'%{filters["search"]}%'
         params.extend([search_term, search_term])
     
-    if filters.get("due_within_days"):
-        from datetime import datetime, timedelta
-        cutoff_date = (datetime.utcnow() + timedelta(days=filters["due_within_days"])).strftime("%Y-%m-%d")
-        where_parts.append("due_date IS NOT NULL AND due_date <= ?")
+    if filters.get('due_within_days'):
+        from datetime import datetime, timedelta, timezone
+        cutoff_date = (datetime.now(timezone.utc) + timedelta(days=filters['due_within_days'])).strftime('%Y-%m-%d')
+        where_parts.append('due_date IS NOT NULL AND due_date <= ?')
         params.append(cutoff_date)
     
+    if filters.get('created_since'):
+        where_parts.append('created_at >= ?')
+        params.append(filters['created_since'])
+    
+    if filters.get('updated_since'):
+        where_parts.append('updated_at >= ?')
+        params.append(filters['updated_since'])
+    
     # Build query
-    where_clause = " AND ".join(where_parts) if where_parts else "1=1"
-    query = f"SELECT * FROM items WHERE {where_clause} ORDER BY priority DESC, due_date ASC, created_at DESC"
+    where_clause = ' AND '.join(where_parts) if where_parts else '1=1'
+    query = f'SELECT * FROM items WHERE {where_clause} ORDER BY id ASC'
     
     cursor = conn.execute(query, params)
     rows = cursor.fetchall()
