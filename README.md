@@ -1,5 +1,10 @@
 # Mindlite
 
+![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-production%20ready-brightgreen.svg)
+![Dependencies](https://img.shields.io/badge/dependencies-none-lightgrey.svg)
+
 A minimal, fast CLI for managing ideas, todos, and issues using only Python's standard library.
 
 ## ✨ Features
