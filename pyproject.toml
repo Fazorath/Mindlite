@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "matrix-mind"
+version = "0.1.0"
+description = "Matrix-style console/TUI app for ideas, todos, and issues"
+authors = ["You <you@example.com>"]
+readme = "README.md"
+packages = [{ include = "matrix_mind" }]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+typer = ">=0.12"
+rich = ">=13.9"
+textual = ">=0.80"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.0"
+
+[tool.poetry.scripts]
+mind = "matrix_mind.cli:app"
+mind-tui = "matrix_mind.tui.app:run"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"
+
+

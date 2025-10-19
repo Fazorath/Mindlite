@@ -1,0 +1,36 @@
+/* Matrix theme */
+:root {
+  --bg: #000000;
+  --green: #00E676;
+  --green-dim: #00BFA5;
+  --gray: #1B1B1B;
+}
+
+* {
+  background: var(--bg);
+  color: var(--green-dim);
+}
+
+#rain {
+  layer: below;
+}
+
+#content, #sidebar, #detail, #main-list {
+  background: #000000dd;
+  border: solid var(--green-dim);
+}
+
+Header, Footer {
+  background: #000000f5;
+  color: var(--green);
+}
+
+Static {
+  color: var(--green-dim);
+}
+
+.accent {
+  color: var(--green);
+}
+
+
