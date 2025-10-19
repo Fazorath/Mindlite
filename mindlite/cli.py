@@ -299,6 +299,177 @@ def cmd_bulk(args: argparse.Namespace) -> None:
             error_exit(f"Unknown bulk action: {args.action}")
 
 
+def cmd_help(args: argparse.Namespace) -> None:
+    """Show help for commands."""
+    if args.command:
+        # Show help for specific command
+        show_command_help(args.command)
+    else:
+        # Show general help
+        parser = create_parser()
+        parser.print_help()
+        print("\n" + "="*60)
+        print("COMMAND ALIASES:")
+        print("="*60)
+        aliases = {
+            'a': 'add - Add new items',
+            'l': 'list - List items with filters', 
+            's': 'show - Show item details',
+            'e': 'edit - Edit existing items',
+            'st': 'start - Start working on items',
+            'b': 'block - Block items',
+            'del': 'delete - Delete items',
+            'ag': 'agenda - Show upcoming items',
+            'exp': 'export - Export data',
+            'h': 'help - Show this help'
+        }
+        for alias, description in aliases.items():
+            print(f"  {alias:<4} = {description}")
+        
+        print("\n" + "="*60)
+        print("QUICK EXAMPLES:")
+        print("="*60)
+        examples = [
+            "mindlite add \"Task name\" --priority high --due tomorrow",
+            "mindlite list --priority high --open",
+            "mindlite bulk done 1,2,3",
+            "mindlite export json backup.json",
+            "mindlite agenda --days 7"
+        ]
+        for example in examples:
+            print(f"  {example}")
+
+
+def show_command_help(command: str) -> None:
+    """Show detailed help for a specific command."""
+    help_texts = {
+        'add': """
+ADD COMMAND - Create new items
+
+Usage: mindlite add "Title" [options]
+
+Required:
+  Title                    Item title (use quotes for multi-word titles)
+
+Options:
+  --type {todo,idea,issue} Item type (default: todo)
+  --body TEXT              Item description/notes
+  --priority {low,med,high} Priority level (default: med)
+  --tags TEXT              Comma-separated tags
+  --due DATE               Due date (multiple formats supported)
+
+Examples:
+  mindlite add "Fix login bug" --type issue --priority high --tags bug,urgent
+  mindlite add "Research AI tools" --type idea --tags research,ai
+  mindlite add "Weekly review" --due +7 --tags recurring
+  mindlite add "Call client" --due tomorrow --priority high
+""",
+        'list': """
+LIST COMMAND - Display items with filtering
+
+Usage: mindlite list [options]
+
+Filtering Options:
+  --type TYPE              Filter by type (comma-separated: todo,idea,issue)
+  --status STATUS          Filter by status (comma-separated: todo,doing,blocked,done)
+  --priority PRIORITY      Filter by priority (comma-separated: low,med,high)
+  --tags TAGS              Filter by tags (comma-separated)
+  --search TEXT            Search in title and body
+  --open                   Show only non-done items
+  --overdue                Show overdue items
+  --due-today              Show items due today
+  --due-this-week          Show items due this week
+  --due-in DAYS            Show items due within N days
+  --created-since DATE     Show items created since date
+  --updated-since DATE     Show items updated since date
+
+Examples:
+  mindlite list --priority high --open
+  mindlite list --tags urgent,work
+  mindlite list --due-today
+  mindlite list --search "project"
+  mindlite list --type todo,idea --status todo,doing
+""",
+        'bulk': """
+BULK COMMAND - Perform operations on multiple items
+
+Usage: mindlite bulk ACTION IDS [options]
+
+Actions:
+  done                     Mark items as done
+  delete                   Delete items
+  tag                      Add tags to items
+  start                    Start working on items
+
+Required:
+  IDS                      Comma-separated item IDs (e.g., 1,2,3)
+
+Options:
+  --tags TAGS              Tags for bulk tag operation
+  -y, --yes                Skip confirmation for delete
+
+Examples:
+  mindlite bulk done 1,2,3
+  mindlite bulk delete 1,2,3 -y
+  mindlite bulk tag 1,2 --tags urgent,work
+  mindlite bulk start 1,2,3
+""",
+        'export': """
+EXPORT COMMAND - Export data to files
+
+Usage: mindlite export FORMAT OUTPUT
+
+Formats:
+  json                     Export as JSON
+  md                       Export as Markdown
+
+Examples:
+  mindlite export json backup.json
+  mindlite export md report.md
+""",
+        'agenda': """
+AGENDA COMMAND - Show upcoming items
+
+Usage: mindlite agenda [options]
+
+Options:
+  --days DAYS              Days ahead to show (default: 7)
+
+Examples:
+  mindlite agenda
+  mindlite agenda --days 14
+""",
+        'edit': """
+EDIT COMMAND - Modify existing items
+
+Usage: mindlite edit ID [options]
+
+Required:
+  ID                       Item ID to edit
+
+Options:
+  --title TEXT             New title
+  --body TEXT              New body/notes
+  --type {todo,idea,issue} New type
+  --status {todo,doing,blocked,done} New status
+  --priority {low,med,high} New priority
+  --due DATE               New due date
+  --tags TAGS              New tags (comma-separated)
+
+Examples:
+  mindlite edit 1 --priority high
+  mindlite edit 2 --status doing --tags urgent
+  mindlite edit 3 --due tomorrow --body "Updated notes"
+"""
+    }
+    
+    if command in help_texts:
+        print(help_texts[command])
+    else:
+        print(f"No detailed help available for command: {command}")
+        print("Use 'mindlite help' for general help or 'mindlite {command} --help' for command options.")
+
+
 def cmd_export(args: argparse.Namespace) -> None:
     """Export items to file."""
     with get_conn() as conn:
@@ -395,9 +566,6 @@ def create_parser() -> argparse.ArgumentParser:
     bulk_parser.add_argument("--tags", help="Tags for bulk tag operation")
     bulk_parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation for delete")
     
-    # help command
-    subparsers.add_parser("help", help="Show help")
-    
     return parser
 
 
@@ -418,16 +586,21 @@ def main() -> None:
         'h': 'help'
     }
     
-    # Replace aliases in sys.argv before parsing
-    if len(sys.argv) > 1 and sys.argv[1] in command_aliases:
-        sys.argv[1] = command_aliases[sys.argv[1]]
+    # Handle help commands before parsing
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'help':
+            if len(sys.argv) > 2:
+                # Specific command help
+                show_command_help(sys.argv[2])
+            else:
+                # General help
+                cmd_help(type('Args', (), {'command': None})())
+            sys.exit(0)
+        elif sys.argv[1] in command_aliases:
+            sys.argv[1] = command_aliases[sys.argv[1]]
     
     parser = create_parser()
     args = parser.parse_args()
-    
-    if args.command == 'help':
-        parser.print_help()
-        sys.exit(0)
     
     if not args.command:
         parser.print_help()
@@ -447,6 +620,7 @@ def main() -> None:
         "agenda": cmd_agenda,
         "export": cmd_export,
         "bulk": cmd_bulk,
+        "help": cmd_help,
     }
     
     handler = command_handlers.get(args.command)
