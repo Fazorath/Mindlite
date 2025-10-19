@@ -1,0 +1,63 @@
+[
+  {
+    "id": 3,
+    "type": "idea",
+    "title": "Add recurring tasks feature",
+    "body": "Implement recurring tasks with cron-like scheduling",
+    "status": "todo",
+    "priority": "med",
+    "due_date": null,
+    "created_at": "2025-10-19T04:03:47Z",
+    "updated_at": "2025-10-19T04:03:47Z",
+    "tags": [
+      "feature",
+      "enhancement"
+    ]
+  },
+  {
+    "id": 1,
+    "type": "todo",
+    "title": "Test mindlite app",
+    "body": "",
+    "status": "doing",
+    "priority": "high",
+    "due_date": "2025-01-15",
+    "created_at": "2025-10-19T04:02:53Z",
+    "updated_at": "2025-10-19T04:03:00Z",
+    "tags": [
+      "test",
+      "cli"
+    ]
+  },
+  {
+    "id": 4,
+    "type": "issue",
+    "title": "Fix date validation bug",
+    "body": "",
+    "status": "done",
+    "priority": "high",
+    "due_date": "2025-01-18",
+    "created_at": "2025-10-19T04:03:50Z",
+    "updated_at": "2025-10-19T04:04:00Z",
+    "tags": [
+      "bug",
+      "fix"
+    ]
+  },
+  {
+    "id": 2,
+    "type": "todo",
+    "title": "Complete mindlite project",
+    "body": "Finish the minimal CLI app with all features working",
+    "status": "doing",
+    "priority": "high",
+    "due_date": "2025-01-20",
+    "created_at": "2025-10-19T04:03:44Z",
+    "updated_at": "2025-10-19T04:04:00Z",
+    "tags": [
+      "cli",
+      "project",
+      "python"
+    ]
+  }
+]
