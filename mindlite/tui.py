@@ -36,14 +36,31 @@ def _draw_sidebar(win, items, idx, top):
     """Draw the sidebar with item list."""
     h, w = win.getmaxyx()
     win.erase()
-    win.box()  # thin box like epr TOC
-    max_rows = h - 2
+    
+    # Draw box
+    try:
+        win.box()
+    except curses.error:
+        pass
+    
+    # Add some debug info
+    try:
+        win.addstr(0, 1, f"Items: {len(items)}", curses.A_BOLD)
+    except curses.error:
+        pass
+    
+    max_rows = h - 3  # Leave space for header
     visible = items[top: top + max_rows]
+    
     for i, it in enumerate(visible):
-        y = i + 1
+        y = i + 2  # Start after header
+        if y >= h - 1:
+            break
+            
         prefix = "> " if (top + i) == idx else "  "
         title = it["title"]
         line = (prefix + title)[: w - 2]
+        
         if (top + i) == idx:
             try:
                 win.addstr(y, 1, line.ljust(w-2), curses.color_pair(2))
@@ -70,13 +87,17 @@ def _draw_reader(win, item, scroll):
     """Draw the reader pane with item details."""
     h, w = win.getmaxyx()
     win.erase()
+    
     # Border in cyan if available
     try:
         win.attron(curses.color_pair(3))
         win.box()
         win.attroff(curses.color_pair(3))
     except curses.error:
-        win.box()
+        try:
+            win.box()
+        except curses.error:
+            pass
 
     inner_w = max(1, w - 2 - PADDING*2)
     x0 = 1 + PADDING
@@ -99,7 +120,10 @@ def _draw_reader(win, item, scroll):
     try:
         win.hline(sep_y, x0, curses.ACS_HLINE, inner_w)
     except curses.error:
-        pass
+        try:
+            win.addstr(sep_y, x0, "-" * inner_w)
+        except curses.error:
+            pass
 
     # Body
     body_lines = _wrap(item.get("body",""), inner_w)
@@ -107,6 +131,7 @@ def _draw_reader(win, item, scroll):
     start_y = sep_y + 1
     avail = (h - 2) - (start_y)
     page = body_lines[scroll: scroll + max(0, avail)]
+    
     for i, line in enumerate(page):
         if start_y + i >= h - 1:
             break
@@ -141,10 +166,15 @@ def _fetch_items():
 
 def run(stdscr):
     """Main curses application loop."""
+    # Initialize curses properly
     curses.curs_set(0)
-    _safe_color_init()
-    stdscr.nodelay(False)
+    curses.noecho()
+    curses.cbreak()
     stdscr.keypad(True)
+    stdscr.nodelay(False)
+    
+    # Initialize colors
+    _safe_color_init()
 
     # layout
     items = _fetch_items()
@@ -154,12 +184,18 @@ def run(stdscr):
     idx = 0
     top = 0             # sidebar scroll
     scroll = 0          # reader scroll
+    
+    # Create windows once
+    sidebar = None
+    reader = None
 
     while True:
         stdscr.erase()
         H, W = stdscr.getmaxyx()
-        if W < MIN_W:
-            msg = "Enlarge terminal (min width ~68)"
+        
+        # Check terminal size
+        if W < MIN_W or H < 10:
+            msg = f"Terminal too small: {W}x{H} (min: {MIN_W}x10)"
             stdscr.addstr(0, 0, msg)
             stdscr.refresh()
             ch = stdscr.getch()
@@ -172,8 +208,11 @@ def run(stdscr):
         sidebar_h = H - 1
         reader_h  = H - 1
 
-        sidebar = curses.newwin(sidebar_h, sidebar_w, 0, 0)
-        reader  = curses.newwin(reader_h,  reader_w,  0, sidebar_w + 1)
+        # Recreate windows if size changed
+        if sidebar is None or sidebar.getmaxyx() != (sidebar_h, sidebar_w):
+            sidebar = curses.newwin(sidebar_h, sidebar_w, 0, 0)
+        if reader is None or reader.getmaxyx() != (reader_h, reader_w):
+            reader = curses.newwin(reader_h, reader_w, 0, sidebar_w + 1)
 
         # keep selection and scroll in bounds
         idx = max(0, min(idx, len(items)-1))
@@ -183,6 +222,11 @@ def run(stdscr):
 
         _draw_sidebar(sidebar, items, idx, top)
         _draw_reader(reader, items[idx], scroll)
+        
+        # Ensure all windows are refreshed
+        sidebar.refresh()
+        reader.refresh()
+        stdscr.refresh()
         curses.doupdate()
 
         ch = stdscr.getch()
