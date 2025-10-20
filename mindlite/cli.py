@@ -10,6 +10,7 @@ from .db import get_conn, init_db, insert_item, update_item, delete_item, get_it
 from .models import Item, validate_type, validate_status, validate_priority, parse_date
 from .utils import comma_split, confirm, print_table, print_item_detail, error_exit
 from .export import export_json, export_md
+from .tui import run_curses
 
 
 def cmd_init(args: argparse.Namespace) -> None:
@@ -483,6 +484,16 @@ def cmd_export(args: argparse.Namespace) -> None:
     print(f"Exported to {args.output}")
 
 
+def cmd_ui(args: argparse.Namespace) -> None:
+    """Launch the curses TUI."""
+    try:
+        run_curses()
+    except KeyboardInterrupt:
+        print("\nExiting UI...")
+    except Exception as e:
+        error_exit(f"UI error: {e}")
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create command-line argument parser."""
     parser = argparse.ArgumentParser(
@@ -490,10 +501,13 @@ def create_parser() -> argparse.ArgumentParser:
         description="A minimal CLI for ideas, todos, and issues"
     )
     
-    subparsers = parser.add_subparsers(dest="command", help="Available commands (aliases: a=add, l=list, s=show, e=edit, st=start, b=block, del=delete, ag=agenda, exp=export, h=help)")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands (aliases: a=add, l=list, s=show, e=edit, st=start, b=block, del=delete, ag=agenda, exp=export, ui=ui, h=help)")
     
     # init command
     subparsers.add_parser("init", help="Initialize database")
+    
+    # ui command
+    subparsers.add_parser("ui", help="Launch curses TUI")
     
     # add command
     add_parser = subparsers.add_parser("add", help="Add a new item")
@@ -583,6 +597,7 @@ def main() -> None:
         'del': 'delete',
         'ag': 'agenda',
         'exp': 'export',
+        'ui': 'ui',
         'h': 'help'
     }
     
@@ -620,6 +635,7 @@ def main() -> None:
         "agenda": cmd_agenda,
         "export": cmd_export,
         "bulk": cmd_bulk,
+        "ui": cmd_ui,
         "help": cmd_help,
     }
     

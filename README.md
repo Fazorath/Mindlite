@@ -17,6 +17,7 @@ A minimal, fast CLI for managing ideas, todos, and issues using only Python's st
 - **Powerful Filtering**: Filter by priority, status, tags, dates, and more
 - **Export Support**: JSON and Markdown export
 - **ID Reset**: Clean starts with ID 1 when database is empty
+- **Curses TUI**: Beautiful terminal interface with sidebar navigation and reader pane
 
 ## 🚀 Quick Start
 
@@ -63,6 +64,41 @@ mindlite export json backup.json
 mindlite export md report.md
 ```
 
+## 🖥️ Terminal UI
+
+Mindlite includes a beautiful curses-based terminal interface:
+
+```bash
+# Launch the TUI
+mindlite ui
+
+# Or use the alias
+mindlite ui
+```
+
+### TUI Features
+
+- **Sidebar Navigation**: Browse items in a vertical list
+- **Reader Pane**: View item details with wrapped text
+- **Status Cycling**: Press `s` to cycle through statuses
+- **Smooth Scrolling**: Navigate with arrow keys or `j`/`k`
+- **Responsive**: Adapts to terminal resizing
+- **Color Support**: Cyan highlights and borders (with fallbacks)
+
+### TUI Controls
+
+| Key | Action |
+|-----|--------|
+| `j` / `↓` | Move down |
+| `k` / `↑` | Move up |
+| `Space` / `PgDn` | Page down in reader |
+| `PgUp` | Page up in reader |
+| `g` | Go to top of reader |
+| `G` | Go to bottom of reader |
+| `s` | Cycle item status |
+| `r` | Refresh data |
+| `q` / `Esc` | Quit |
+
 ## 📋 Command Reference
 
 ### Core Commands
@@ -77,6 +113,7 @@ mindlite export md report.md
 | `delete` | `del` | Delete item |
 | `agenda` | `ag` | Show upcoming items |
 | `export` | `exp` | Export data |
+| `ui` | `ui` | Launch terminal UI |
 | `help` | `h` | Show help |
 
 ### Status Commands
