@@ -131,9 +131,12 @@ def _fetch_items():
     """Fetch items from database."""
     # minimal list: id, title, meta; sorted by updated_at desc
     conn = db.ensure_db()
-    rows = db.list_items({"open_only": False})
-    # Ensure dict-like
-    return [dict(r) for r in rows]
+    try:
+        rows = db.list_items(conn, {"open_only": False})
+        # Ensure dict-like
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
 
 
 def run(stdscr):
@@ -215,9 +218,12 @@ def run(stdscr):
             cur = items[idx]["status"]
             nxt = order[(order.index(cur) + 1) % len(order)]
             conn = db.ensure_db()
-            conn.execute("UPDATE items SET status=?, updated_at=datetime('now') WHERE id=?", (nxt, items[idx]["id"]))
-            conn.commit()
-            items[idx]["status"] = nxt
+            try:
+                conn.execute("UPDATE items SET status=?, updated_at=datetime('now') WHERE id=?", (nxt, items[idx]["id"]))
+                conn.commit()
+                items[idx]["status"] = nxt
+            finally:
+                conn.close()
 
 
 def run_curses():
